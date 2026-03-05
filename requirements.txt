@@ -40,6 +40,5 @@ twilio==8.11.1
 # Utilities
 python-slugify==8.0.1
 
-pandas==2.2.0
 openpyxl==3.1.2
 python-multipart==0.0.9

@@ -359,8 +359,35 @@ def delete_subcategory(
 
 
 from fastapi import UploadFile, File
-import pandas as pd
+import csv
 import io
+from openpyxl import load_workbook
+
+
+def is_empty_value(value):
+    """Check if a value is None, empty string, or NaN-like"""
+    if value is None:
+        return True
+    if isinstance(value, str) and value.strip() == '':
+        return True
+    return False
+
+
+def parse_bool(value, default=True):
+    """Parse boolean value from string"""
+    if is_empty_value(value):
+        return default
+    return str(value).lower() in ('true', '1', 'yes', 'y')
+
+
+def parse_int(value, default=0):
+    """Parse integer value"""
+    if is_empty_value(value):
+        return default
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return default
 
 
 @router.post("/categories/upload-excel")
@@ -386,19 +413,44 @@ async def upload_categories_excel(
         # Read file content
         contents = await file.read()
         
-        # Parse Excel/CSV file
+        # Parse file based on type
+        rows = []
+        headers = []
+        
         if file.filename.endswith('.csv'):
-            df = pd.read_csv(io.BytesIO(contents))
+            # Parse CSV
+            text_content = contents.decode('utf-8-sig')  # Handle BOM
+            csv_reader = csv.DictReader(io.StringIO(text_content))
+            headers = csv_reader.fieldnames or []
+            rows = list(csv_reader)
         else:
-            df = pd.read_excel(io.BytesIO(contents))
+            # Parse Excel
+            workbook = load_workbook(filename=io.BytesIO(contents), read_only=True)
+            sheet = workbook.active
+            
+            # Get headers from first row
+            headers = [cell.value for cell in sheet[1]]
+            
+            # Get data rows
+            for row in sheet.iter_rows(min_row=2, values_only=True):
+                row_dict = {headers[i]: row[i] for i in range(len(headers)) if i < len(row)}
+                rows.append(row_dict)
+            
+            workbook.close()
         
         # Validate required columns
         required_columns = ['name', 'slug']
-        missing_columns = [col for col in required_columns if col not in df.columns]
+        missing_columns = [col for col in required_columns if col not in headers]
         if missing_columns:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Missing required columns: {', '.join(missing_columns)}"
+            )
+        
+        if not rows:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="The uploaded file is empty"
             )
         
         # Process records
@@ -407,7 +459,7 @@ async def upload_categories_excel(
         failed = 0
         errors = []
         
-        for index, row in df.iterrows():
+        for index, row in enumerate(rows):
             try:
                 # Check if category exists by slug
                 existing_category = db.query(Category).filter(
@@ -419,13 +471,13 @@ async def upload_categories_excel(
                 category_data = {
                     'name': row['name'],
                     'slug': row['slug'],
-                    'description': row.get('description', None) if pd.notna(row.get('description')) else None,
-                    'icon': row.get('icon', None) if pd.notna(row.get('icon')) else None,
-                    'image_url': row.get('image_url', None) if pd.notna(row.get('image_url')) else None,
-                    'display_order': int(row.get('display_order', 0)) if pd.notna(row.get('display_order')) else 0,
-                    'is_active': str(row.get('is_active', 'true')).lower() == 'true' if pd.notna(row.get('is_active')) else True,
-                    'show_on_home': str(row.get('show_on_home', 'true')).lower() == 'true' if pd.notna(row.get('show_on_home')) else True,
-                    'show_in_menu': str(row.get('show_in_menu', 'true')).lower() == 'true' if pd.notna(row.get('show_in_menu')) else True
+                    'description': row.get('description') if not is_empty_value(row.get('description')) else None,
+                    'icon': row.get('icon') if not is_empty_value(row.get('icon')) else None,
+                    'image_url': row.get('image_url') if not is_empty_value(row.get('image_url')) else None,
+                    'display_order': parse_int(row.get('display_order'), 0),
+                    'is_active': parse_bool(row.get('is_active'), True),
+                    'show_on_home': parse_bool(row.get('show_on_home'), True),
+                    'show_in_menu': parse_bool(row.get('show_in_menu'), True)
                 }
                 
                 if existing_category:
@@ -480,11 +532,6 @@ async def upload_categories_excel(
             "errors": errors[:10]  # Limit to first 10 errors
         }
         
-    except pd.errors.EmptyDataError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="The uploaded file is empty"
-        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -516,15 +563,34 @@ async def upload_subcategories_excel(
         # Read file content
         contents = await file.read()
         
-        # Parse Excel/CSV file
-        if file.filename.endswith('.csv'):
-            df = pd.read_csv(io.BytesIO(contents))
-        else:
-            df = pd.read_excel(io.BytesIO(contents))
+        # Parse file based on type
+        rows = []
+        headers = []
         
-        # Validate required columns - need either category_name or category_id
+        if file.filename.endswith('.csv'):
+            # Parse CSV
+            text_content = contents.decode('utf-8-sig')  # Handle BOM
+            csv_reader = csv.DictReader(io.StringIO(text_content))
+            headers = csv_reader.fieldnames or []
+            rows = list(csv_reader)
+        else:
+            # Parse Excel
+            workbook = load_workbook(filename=io.BytesIO(contents), read_only=True)
+            sheet = workbook.active
+            
+            # Get headers from first row
+            headers = [cell.value for cell in sheet[1]]
+            
+            # Get data rows
+            for row in sheet.iter_rows(min_row=2, values_only=True):
+                row_dict = {headers[i]: row[i] for i in range(len(headers)) if i < len(row)}
+                rows.append(row_dict)
+            
+            workbook.close()
+        
+        # Validate required columns
         required_columns = ['name', 'slug']
-        missing_columns = [col for col in required_columns if col not in df.columns]
+        missing_columns = [col for col in required_columns if col not in headers]
         if missing_columns:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -532,10 +598,16 @@ async def upload_subcategories_excel(
             )
         
         # Check if we have at least one category mapping column
-        if 'category_name' not in df.columns and 'category_id' not in df.columns:
+        if 'category_name' not in headers and 'category_id' not in headers:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Must provide either 'category_name' or 'category_id' column"
+            )
+        
+        if not rows:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="The uploaded file is empty"
             )
         
         # Process records
@@ -544,16 +616,16 @@ async def upload_subcategories_excel(
         failed = 0
         errors = []
         
-        for index, row in df.iterrows():
+        for index, row in enumerate(rows):
             try:
                 category_id = None
                 
                 # Try to get category_id first (if provided)
-                if 'category_id' in df.columns and pd.notna(row.get('category_id')):
+                if 'category_id' in headers and not is_empty_value(row.get('category_id')):
                     category_id = row['category_id']
                 
                 # If no category_id, try to find by category_name
-                elif 'category_name' in df.columns and pd.notna(row.get('category_name')):
+                elif 'category_name' in headers and not is_empty_value(row.get('category_name')):
                     category_name = str(row['category_name']).strip()
                     category = db.query(Category).filter(
                         Category.name == category_name,
@@ -595,10 +667,10 @@ async def upload_subcategories_excel(
                     'category_id': category_id,
                     'name': row['name'],
                     'slug': row['slug'],
-                    'description': row.get('description', None) if pd.notna(row.get('description')) else None,
-                    'icon': row.get('icon', None) if pd.notna(row.get('icon')) else None,
-                    'display_order': int(row.get('display_order', 0)) if pd.notna(row.get('display_order')) else 0,
-                    'is_active': str(row.get('is_active', 'true')).lower() == 'true' if pd.notna(row.get('is_active')) else True
+                    'description': row.get('description') if not is_empty_value(row.get('description')) else None,
+                    'icon': row.get('icon') if not is_empty_value(row.get('icon')) else None,
+                    'display_order': parse_int(row.get('display_order'), 0),
+                    'is_active': parse_bool(row.get('is_active'), True)
                 }
                 
                 if existing_subcategory:
@@ -653,11 +725,6 @@ async def upload_subcategories_excel(
             "errors": errors[:10]  # Limit to first 10 errors
         }
         
-    except pd.errors.EmptyDataError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="The uploaded file is empty"
-        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
