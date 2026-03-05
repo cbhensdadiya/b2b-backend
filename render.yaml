@@ -3,8 +3,9 @@ services:
     name: b2b-backend
     runtime: python
     plan: free
-    buildCommand: pip install --upgrade pip && pip install --only-binary=:all: -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    rootDir: b2b-backend
+    buildCommand: pip install --upgrade pip && pip install --only-binary=:all: -r requirements.txt && alembic upgrade head
+    startCommand: gunicorn app.main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0

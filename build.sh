@@ -10,3 +10,5 @@ pip install --only-binary=:all: --no-cache-dir -r requirements.txt
 
 # Run database migrations
 alembic upgrade head
+
+echo "Build completed successfully!"
