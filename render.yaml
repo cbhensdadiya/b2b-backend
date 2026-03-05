@@ -15,11 +15,14 @@ services:
         value: 1
       - key: PIP_ONLY_BINARY
         value: :all:
+      - key: DISABLE_COLLECTSTATIC
+        value: 1
       - key: DATABASE_URL
         fromDatabase:
           name: b2b-database
           property: connectionString
     healthCheckPath: /
+    autoDeploy: false
 
 databases:
   - name: b2b-database
