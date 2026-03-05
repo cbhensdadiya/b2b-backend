@@ -1,0 +1,8 @@
+# Ignore files that might confuse Render's auto-detection
+venv/
+*.pyc
+__pycache__/
+.git/
+.env
+*.bat
+*.md

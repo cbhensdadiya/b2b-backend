@@ -1,0 +1,5 @@
+This is a FastAPI application, NOT Django.
+
+Start command: gunicorn app.main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
+
+Do NOT run: gunicorn b2b-backend.wsgi

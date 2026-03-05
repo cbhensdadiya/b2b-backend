@@ -1,31 +1,27 @@
 services:
   - type: web
-    name: b2b-backend
+    name: b2b-backend-api
     runtime: python
     plan: free
+    region: oregon
+    branch: main
     rootDir: b2b-backend
-    buildCommand: pip install --upgrade pip && pip install --only-binary=:all: -r requirements.txt && alembic upgrade head
-    startCommand: gunicorn app.main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
+    buildCommand: pip install --upgrade pip && pip install --only-binary=:all: --no-cache-dir -r requirements.txt && alembic upgrade head
+    startCommand: gunicorn app.main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --access-logfile - --error-logfile - --log-level info
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11.0
+        value: "3.11.0"
       - key: PIP_NO_BUILD_ISOLATION
-        value: false
+        value: "false"
       - key: PIP_PREFER_BINARY
-        value: 1
+        value: "1"
       - key: PIP_ONLY_BINARY
-        value: :all:
+        value: ":all:"
       - key: DISABLE_COLLECTSTATIC
-        value: 1
-      - key: DATABASE_URL
-        fromDatabase:
-          name: b2b-database
-          property: connectionString
-    healthCheckPath: /
+        value: "1"
+      - key: PORT
+        value: "10000"
     autoDeploy: false
 
-databases:
-  - name: b2b-database
-    plan: free
-    databaseName: b2b_marketplace
-    user: b2b_user
+# Note: Create PostgreSQL database separately in Render Dashboard
+# Then add DATABASE_URL and SECRET_KEY as environment variables

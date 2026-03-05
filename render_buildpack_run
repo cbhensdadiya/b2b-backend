@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# This file prevents Render from auto-detecting Django
+# and forces it to use our custom start command
+
+echo "Starting FastAPI application with Gunicorn + Uvicorn workers"
+exec gunicorn app.main:app \
+    --workers 2 \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --bind 0.0.0.0:${PORT:-10000} \
+    --access-logfile - \
+    --error-logfile - \
+    --log-level info
