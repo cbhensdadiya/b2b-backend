@@ -1,0 +1,39 @@
+========================================
+COMMON UVICORN COMMANDS
+========================================
+
+Basic (default host and port):
+uvicorn app.main:app --reload
+
+With custom host and port:
+uvicorn app.main:app --host 0.0.0.0 --port 10000
+
+With reload (development):
+uvicorn app.main:app --reload --host 0.0.0.0 --port 10000
+
+With specific host only:
+uvicorn app.main:app --host 0.0.0.0
+
+With specific port only:
+uvicorn app.main:app --port 8080
+
+With workers (production):
+uvicorn app.main:app --host 0.0.0.0 --port 10000 --workers 4
+
+========================================
+GUNICORN COMMANDS (Production)
+========================================
+
+Basic:
+gunicorn app.main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker
+
+With custom port:
+gunicorn app.main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:10000
+
+With logging:
+gunicorn app.main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:10000 --access-logfile - --error-logfile -
+
+========================================
+IMPORTANT: Always use "app.main:app"
+NOT "main:app"
+========================================
