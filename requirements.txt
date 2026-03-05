@@ -35,7 +35,7 @@ pyotp==2.9.0
 twilio==8.11.1
 
 # Email Service
-python-smtp==1.0.0
+#python-smtp==1.0.0
 
 # Utilities
 python-slugify==8.0.1
