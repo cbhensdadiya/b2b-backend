@@ -4,6 +4,8 @@
 echo "Starting B2B Backend with Gunicorn + Uvicorn workers..."
 echo "Working directory: $(pwd)"
 echo "Python version: $(python --version)"
+echo "Checking app module..."
+python -c "import app.main; print('✅ app.main module found')"
 
 # Start the application
 exec gunicorn app.main:app \
