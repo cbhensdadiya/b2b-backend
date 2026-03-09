@@ -19,9 +19,7 @@ services:
         value: ":all:"
       - key: DISABLE_COLLECTSTATIC
         value: "1"
-      - key: PORT
-        value: "10000"
     autoDeploy: false
 
 # Note: Create PostgreSQL database separately in Render Dashboard
-# Then add DATABASE_URL and SECRET_KEY as environment variables
+# Then add DATABASE_URL and SECRET_KEY as environment variables manually
